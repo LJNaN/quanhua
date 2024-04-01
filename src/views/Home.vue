@@ -15,6 +15,5 @@ import * as echarts from "echarts";
   height: 100%;
   z-index: 2;
   position: absolute;
-  background: url('/assets/img/1.png') center / 100% 100% no-repeat
 }
 </style>

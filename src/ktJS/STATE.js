@@ -10,20 +10,10 @@ const initCameraState = {
   position: {},
   target: {}
 }
-let WJMeshes = []
-let saveClickObjects = {
-  home: [],
-  '201': [],
-  '211': []
-}
-const currentScene = ref('home')
 
 export const STATE = {
   PUBLIC_PATH,
   sceneList,
-  WJMeshes,
-  currentScene,
-  saveClickObjects,
   initCameraState
 }
 

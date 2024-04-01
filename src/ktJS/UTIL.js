@@ -296,96 +296,6 @@ function instanceInit() {
   }
 }
 
-// 范围内随机生成
-function generateRandomPointInPolygon(polygon) {
-  let minX = Math.min(...polygon.map(point => point[0]));
-  let maxX = Math.max(...polygon.map(point => point[0]));
-  let minY = Math.min(...polygon.map(point => point[1]));
-  let maxY = Math.max(...polygon.map(point => point[1]));
-
-  let randomX, randomY;
-  let isInside = false;
-  let attempts = 0;
-  const maxAttempts = 1000; // 设置最大尝试次数，避免无限循环
-
-  while (!isInside && attempts < maxAttempts) {
-    randomX = minX + (maxX - minX) * Math.random();
-    randomY = minY + (maxY - minY) * Math.random();
-    isInside = isPointInPolygon([randomX, randomY], polygon);
-    attempts++;
-  }
-
-  if (isInside) {
-    return [randomX, randomY];
-  } else {
-    return [polygon[0][0], polygon[0][1]];
-  }
-}
-
-// 在范围里面吗
-function isPointInPolygon(point, polygon) {
-  let x = point[0], y = point[1];
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    let xi = polygon[i][0], yi = polygon[i][1];
-    let xj = polygon[j][0], yj = polygon[j][1];
-
-    let intersect = ((yi > y) != (yj > y)) &&
-      (x < ((xj - xi) * (y - yi) / (yj - yi) + xi));
-    if (intersect) inside = !inside;
-  }
-
-  return inside;
-}
-
-// 边缘生成随机点
-function generatePointsOnPolygonEdge(polygon, numberOfPoints) {
-  let edgeLengths = [];
-  let totalLength = 0;
-
-  // 计算多边形各条边的长度
-  for (let i = 0; i < polygon.length; i++) {
-    let startPoint = polygon[i];
-    let endPoint = polygon[(i + 1) % polygon.length];
-    let length = Math.sqrt(Math.pow(endPoint[0] - startPoint[0], 2) + Math.pow(endPoint[1] - startPoint[1], 2));
-    edgeLengths.push(length);
-    totalLength += length;
-  }
-
-  // 根据边长比例在边上均匀生成点
-  let points = [];
-  let accumulatedLength = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    let startPoint = polygon[i];
-    let endPoint = polygon[(i + 1) % polygon.length];
-    let length = edgeLengths[i];
-    let numberOfPointsOnEdge = Math.round((length / totalLength) * numberOfPoints);
-
-    for (let j = 0; j < numberOfPointsOnEdge; j++) {
-      let t = j / numberOfPointsOnEdge;
-      let x = startPoint[0] + t * (endPoint[0] - startPoint[0]);
-      let y = startPoint[1] + t * (endPoint[1] - startPoint[1]);
-      points.push([x, y]);
-    }
-  }
-
-  return points;
-}
-
-// 多边形面积
-function calculatePolygonArea(vertices) {
-  let n = vertices.length;
-  let area = 0;
-
-  for (let i = 0; i < n; i++) {
-    let j = (i + 1) % n;
-    area += vertices[i][0] * vertices[j][1];
-    area -= vertices[j][0] * vertices[i][1];
-  }
-
-  area = Math.abs(area) / 2;
-  return area;
-}
 
 // 计算相机到目标指定长度的位置
 function getCameraToTargetPosition(target = new Bol3D.Vector3(0, 0, 0), distance = 1000) {
@@ -426,9 +336,6 @@ export const UTIL = {
   instantiationSingleInfo,
   setModelPosition,
   instanceInit,
-  generateRandomPointInPolygon,
-  calculatePolygonArea,
-  generatePointsOnPolygonEdge,
   getCameraToTargetPosition,
   getWorldPosition
 }

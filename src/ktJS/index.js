@@ -40,12 +40,9 @@ export const loadSceneByJSON = ({ domElement, callback }) => {
           CACHE.container = evt
           window.container = evt
 
-          API.initTree()
           UTIL.instanceInit()
 
           evt.updateSceneByNodes(jsonParser.nodes[0], 0, () => {
-            API.changeEnvironment()
-            API.saveWJMeshes()
             STATE.initCameraState.position = evt.orbitCamera.position.clone()
             STATE.initCameraState.target = evt.orbitControls.target.clone()
             GLOBAL.loadingPercent.value = 100
