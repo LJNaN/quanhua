@@ -40,12 +40,13 @@ export const loadSceneByJSON = ({ domElement, callback }) => {
           CACHE.container = evt
           window.container = evt
 
-          UTIL.instanceInit()
 
           evt.updateSceneByNodes(jsonParser.nodes[0], 0, () => {
             STATE.initCameraState.position = evt.orbitCamera.position.clone()
             STATE.initCameraState.target = evt.orbitControls.target.clone()
             GLOBAL.loadingPercent.value = 100
+
+            API.afterOnload()
           })
         }
       })
@@ -58,9 +59,8 @@ export const loadSceneByJSON = ({ domElement, callback }) => {
           if (e.objects.length) {
             API.doubleClickFunc(e.objects[0])
           }
-          
+
         } else if (e.event.button === 2) { // 右键
-          API.back()
         }
       }
 

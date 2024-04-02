@@ -329,6 +329,7 @@ function getWorldPosition(object) {
   }
 }
 
+
 export const UTIL = {
   cameraAnimation,
   loadGUI,
