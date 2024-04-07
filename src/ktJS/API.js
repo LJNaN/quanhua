@@ -168,133 +168,95 @@ function afterOnload() {
 
 
     if (e.name.includes('164')) {
+      const geometry = e.geometry;
       console.log('e: ', e);
-
-      var geometry = e.geometry;
       // 获取管状模型的顶点数据
-      var positions = geometry.attributes.position.array;
-      console.log('positions: ', positions);
-
+      const count = geometry.attributes.position.count
       // 计算两侧封顶的中心点
-      var centerPoint1 = new Bol3D.Vector3();
-      var centerPoint2 = new Bol3D.Vector3();
-      var centerBasePoint1 = null
-      var centerBasePoint2 = null
+      const centerPoint1 = new Bol3D.Vector3();
+      const centerPoint2 = new Bol3D.Vector3();
+      let centerBasePoint1 = null
       let centerPoint1Count = 0
       let centerPoint2Count = 0
-      const count = e.geometry.attributes.position.count
-      console.log('count: ', count);
-
       let temp = {}
 
-      for (let i = 0; i < count; i += 3) {
-        if (temp[positions[i] + '' + positions[i + 1] + '' + positions[i + 2]]) {
+      for (let i = 0; i < count; i++) {
+        const worldPosition = new Bol3D.Vector3()
+        worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(e.matrixWorld)
+
+        if (temp[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z]) {
           continue
 
         } else {
-          temp[positions[i] + '' + positions[i + 1] + '' + positions[i + 2]] = 1
-
-          const a = new Bol3D.Vector3(positions[i], positions[i + 1], positions[i + 2])
+          temp[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z] = 1
+          const a = new Bol3D.Vector3(worldPosition.x, worldPosition.y, worldPosition.z)
           if (!centerBasePoint1) {
-            centerPoint1.x += positions[i];
-            centerPoint1.y += positions[i + 1];
-            centerPoint1.z += positions[i + 2];
+            centerPoint1.x += worldPosition.x;
+            centerPoint1.y += worldPosition.y;
+            centerPoint1.z += worldPosition.z;
             centerPoint1Count++
             centerBasePoint1 = a.clone()
 
           } else {
             const dis = a.distanceTo(centerBasePoint1)
-            console.log('dis: ', dis);
+
             if (dis > 10) {
-              centerPoint2.x += positions[i];
-              centerPoint2.y += positions[i + 1];
-              centerPoint2.z += positions[i + 2];
+              centerPoint2.x += worldPosition.x;
+              centerPoint2.y += worldPosition.y;
+              centerPoint2.z += worldPosition.z;
               centerPoint2Count++
 
             } else {
-              centerPoint1.x += positions[i];
-              centerPoint1.y += positions[i + 1];
-              centerPoint1.z += positions[i + 2];
+              centerPoint1.x += worldPosition.x;
+              centerPoint1.y += worldPosition.y;
+              centerPoint1.z += worldPosition.z;
               centerPoint1Count++
             }
           }
         }
       }
 
-      console.log('temp: ', temp);
       centerPoint1.divideScalar(centerPoint1Count);
       centerPoint2.divideScalar(centerPoint2Count);
-      console.log('centerPoint1Count: ', centerPoint1Count);
-      console.log('centerPoint2Count: ', centerPoint2Count);
-      console.log('centerPoint1: ', centerPoint1);
-      console.log('centerPoint2: ', centerPoint2);
-
       // 计算管状模型的朝向向量
-      var directionVector = new Bol3D.Vector3();
-      directionVector.subVectors(centerPoint2, centerPoint1).normalize();
-
-      // 现在directionVector就是管状模型的朝向向量
-      console.log(directionVector);
-      // const directionVector = new Bol3D.Vector3()
-      // e.userData.directionVector = directionVector
-
-      // const g = new Bol3D.BoxGeometry(5)
-      // const m = new Bol3D.MeshBasicMaterial({ color: 0xff0000 })
-      // const mesh = new Bol3D.Mesh(g, m)
-      // container.scene.add(mesh)
-
+      const directionVector = new Bol3D.Vector3();
+      directionVector.subVectors(centerPoint2, centerPoint1).normalize()
       e.userData.directionVector = directionVector
+      console.log('directionVector: ', directionVector);
+      console.log('temp: ', temp);
 
 
-      var g2 = new Bol3D.BoxGeometry(500, 20, 20);
+      const array = geometry.attributes.position.array
+      for (let i = 0; i < count; i++) {
+        const worldPosition = new Bol3D.Vector3()
+        worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(e.matrixWorld)
+        // 在direction上的投影
+        const projectVector = worldPosition.clone().projectOnVector(directionVector);
+        if (i === 0) {
+          console.log('worldPosition: ', worldPosition);
+          console.log('projectVector: ', projectVector);
+          const g2 = new Bol3D.BoxGeometry(10, 10, 500);
+          const m2 = new Bol3D.MeshBasicMaterial({ color: 0x00ff00 });
+          const cylinderMesh = new Bol3D.Mesh(g2, m2);
+          cylinderMesh.lookAt(directionVector);
+          cylinderMesh.position.set(worldPosition.x, worldPosition.y, worldPosition.z);
+          // cylinderMesh.position.set(projectVector.x, projectVector.y, projectVector.z);
+          container.scene.add(cylinderMesh);
+          console.log('cylinderMesh: ', cylinderMesh);
+          UTIL.setModelPosition(cylinderMesh)
+        }
+        // const distance = new Bol3D.Vector3().subVectors(projectVector, worldPosition)
 
-      // 创建一个材质
-      var m2 = new Bol3D.MeshBasicMaterial({ color: 0x00ff00 });
+        // distance.multiplyScalar(5)
 
-      // 创建一个 Mesh
-      var cylinderMesh = new Bol3D.Mesh(g2, m2);
+        // 将修改后的坐标重新写回顶点数组
+        //   array[i / 3] = distance.x;
+        //   array[i / 3 + 1] = distance.y;
+        //   array[i / 3 + 2] = distance.z;
+        // }
 
-      // 将圆柱的方向调整为指定的向量
-      cylinderMesh.lookAt(directionVector);
-
-      // 将圆柱的位置调整为指定的向量的一半处
-      cylinderMesh.position.set(0, 200, 0);
-
-      // 添加到场景中
-      container.scene.add(cylinderMesh);
-      console.log('cylinderMesh: ', cylinderMesh);
-      UTIL.setModelPosition(cylinderMesh)
-
-      // const geometry = e.geometry
-      // const positions = geometry.attributes.position.array;
-      // for (var i = 0; i < positions.length; i += 3) {
-      //   var x = positions[i];
-      //   var y = positions[i + 1];
-      //   var z = positions[i + 2];
-
-      //   // 当前点位置
-      //   var d = new Bol3D.Vector3(x, y, z);
-
-
-      //   // 在direction上的投影
-      //   var e = d.clone().projectOnVector(directionVector);
-
-
-
-      //   const f = new Bol3D.Vector3().subVectors(d, e)
-
-      //   f.multiplyScalar(5)
-
-
-
-
-      //   // 将修改后的坐标重新写回顶点数组
-      //   positions[i] = f.x;
-      //   positions[i + 1] = f.y;
-      //   positions[i + 2] = f.z;
-      // }
-
-      // geometry.attributes.position.needsUpdate = true;
+        geometry.attributes.position.needsUpdate = true;
+      }
     }
   })
 
