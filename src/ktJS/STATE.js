@@ -4,7 +4,6 @@ import { ref } from 'vue'
 
 const PUBLIC_PATH = './assets/3d'
 const sceneList = {
-  water: null // 水面
 }
 const initCameraState = {
   position: {},
