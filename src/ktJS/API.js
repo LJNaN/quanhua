@@ -67,22 +67,20 @@ class Pipeline extends Bol3D.Mesh {
       #include <common>
       
       uniform float time;
-      uniform float lineLong;
+      uniform float pipelineLong;
       varying vec2 vUv; // 接收从顶点着色器传递过来的纹理坐标
       varying vec2 vPosition;
 
       void main() {
-        vec4 color = vec4(0.7,0.7,0.7,1.);
+        vec4 color = vec4(0.0,0.7,0.7,1.);
 
-        float threshold = 10.; // 控制留白的间距
-        float blockWidth = 0.5; // 控制留白的宽度
-        float flowSpeed = 5.0; // 控制流动速度
-        float flowOffset = vUv.x - time * flowSpeed / lineLong; // 控制流动效果
-        flowOffset = mod(flowOffset, threshold / lineLong); // 将偏移量限制在阈值范围内
-        float blockMask = 1.0 - step(flowOffset, blockWidth / lineLong);
+        float threshold = 5.; // 控制留白的间距
+        float blockWidth = 1.; // 控制留白的宽度
+        float flowSpeed = 10.0; // 控制流动速度
+        float flowOffset = vUv.x - time * flowSpeed; // 控制流动效果
+        flowOffset = mod(flowOffset, threshold); // 将偏移量限制在阈值范围内
+        float blockMask = 1.0 - step(flowOffset, blockWidth );
 
-
-        color = vec4(0.0, 1.0, 1.0, 1.0);
         color.a = blockMask;
         
 
@@ -92,18 +90,163 @@ class Pipeline extends Bol3D.Mesh {
     `
 
     // 创建 ShaderMaterial，并传入纹理
+    const pipelineLength = this.computeBoundingLen()
+    
     const material = new Bol3D.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
-        long: { value: 1.0 }
+        pipelineLong: { value: pipelineLength }
       },
       vertexShader: vertexShader,
       fragmentShader: fragmentShader,
       transparent: true
     })
     material.needsUpdate = true
-
     return material
+  }
+
+  computeBoundingLen() {
+    const geometry = this.geometry;
+    geometry.computeBoundingBox()
+    const worldBox = new Bol3D.Box3().copy(geometry.boundingBox).applyMatrix4(this.matrixWorld)
+    const length = worldBox.getSize(new Bol3D.Vector3()).length()
+    
+    this.userData.long = length
+    return length
+  }
+
+  get radius() {
+    return this._radius
+  }
+
+  set radius(val) {
+    if (typeof (val) !== 'number') {
+      console.error(
+        '要输入 Number 类型')
+      return
+    }
+    if (!this.userData.directionList || !this.userData.originDistanceList || !this.userData.worldPositionList) {
+      console.error(
+        '没有初始数据，请先运行initRadiusData()')
+      return
+    }
+
+    this._radius = val
+    const geometry = this.geometry;
+    // 获取管状模型的顶点数据
+    const count = geometry.attributes.position.count
+    const array = geometry.attributes.position.array
+
+
+    for (let i = 0; i < count; i++) {
+      // 新的距离
+      const distance = this.userData.originDistanceList[i]
+      const direction = this.userData.directionList[i].clone()
+      const worldPosition = this.userData.worldPositionList[i]
+
+      const newDistance = (val + 1) * distance
+      const moveVector = direction.multiplyScalar(newDistance)
+      const newPosition = new Bol3D.Vector3().copy(worldPosition).add(moveVector)
+      const inverseMatrix = new Bol3D.Matrix4()
+      inverseMatrix.copy(this.matrixWorld).invert()
+
+      const newP = new Bol3D.Vector3()
+      newP.copy(newPosition)
+      newP.applyMatrix4(inverseMatrix)
+      array[i * 3] = newP.x;
+      array[i * 3 + 1] = newP.y;
+      array[i * 3 + 2] = newP.z;
+    }
+    geometry.attributes.position.needsUpdate = true
+  }
+
+  initRadiusData() {
+    const geometry = this.geometry;
+    // 获取管状模型的顶点数据
+    const count = geometry.attributes.position.count
+    // 计算两侧封顶的中心点
+    const centerPoint1 = new Bol3D.Vector3();
+    const centerPoint2 = new Bol3D.Vector3();
+    const threshold = 5 // 超过5就认为他们不在这个顶盖上
+    let centerBasePoint1 = null
+    let centerPoint1Count = 0
+    let centerPoint2Count = 0
+    const directionList = [] // 每个点的世界坐标与当前中心点的向量的集合
+    const originDistanceList = [] // 每个点的世界坐标与中心点的距离的集合
+    const worldPositionList = [] // 每个点的世界位置集合
+
+    const filterList = {}
+    // 计算两个顶盖的中心位置
+    for (let i = 0; i < count; i++) {
+      const worldPosition = new Bol3D.Vector3()
+      worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(this.matrixWorld)
+      worldPositionList.push(worldPosition)
+
+      if (filterList[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z]) {
+        continue
+
+      } else {
+        filterList[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z] = 1
+        const a = new Bol3D.Vector3(worldPosition.x, worldPosition.y, worldPosition.z)
+        if (!centerBasePoint1) {
+          centerPoint1.x += worldPosition.x;
+          centerPoint1.y += worldPosition.y;
+          centerPoint1.z += worldPosition.z;
+          centerPoint1Count++
+          centerBasePoint1 = a.clone()
+
+        } else {
+          const dis = a.distanceTo(centerBasePoint1)
+
+          if (dis > threshold) {
+            centerPoint2.x += worldPosition.x;
+            centerPoint2.y += worldPosition.y;
+            centerPoint2.z += worldPosition.z;
+            centerPoint2Count++
+
+          } else {
+            centerPoint1.x += worldPosition.x;
+            centerPoint1.y += worldPosition.y;
+            centerPoint1.z += worldPosition.z;
+            centerPoint1Count++
+          }
+        }
+      }
+    }
+    centerPoint1.divideScalar(centerPoint1Count);
+    centerPoint2.divideScalar(centerPoint2Count);
+
+    // 找离中心点的距离
+    for (let i = 0; i < count; i++) {
+      const worldPosition = new Bol3D.Vector3()
+      worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(this.matrixWorld)
+      const dis1 = new Bol3D.Vector3().copy(worldPosition).distanceTo(centerPoint1)
+      const dis2 = new Bol3D.Vector3().copy(worldPosition).distanceTo(centerPoint2)
+      let point = 1
+      let min = 0
+      // 找离哪个顶盖最近，离中心点的距离是多少
+      if (dis1 > dis2) {
+        point = 2
+        min = dis2
+      } else {
+        point = 1
+        min = dis1
+      }
+      originDistanceList.push(min)
+
+      // 当前点到最近的顶盖中心点的向量
+      let dir = null
+      if (point === 1) {
+        dir = new Bol3D.Vector3().subVectors(centerPoint1, worldPosition)
+      } else if (point === 2) {
+        dir = new Bol3D.Vector3().subVectors(centerPoint2, worldPosition)
+      }
+      directionList.push(dir.clone().normalize())
+    }
+
+    this.userData.directionList = directionList
+    this.userData.originDistanceList = originDistanceList
+    this.userData.worldPositionList = worldPositionList
   }
 }
 
@@ -144,134 +287,30 @@ function afterOnload() {
 
 
   // 开始施法  计算每个管子的方向是 x, y 还是 z
-  STATE.pipelineList.forEach(e => {
+  STATE.pipelineList.forEach((e, index) => {
     Object.setPrototypeOf(e, Pipeline.prototype)
+    e.initRadiusData()
     // e.materialType = 'default'
     // e.material = STATE.pipelineMaterial.default.clone()
-    e.geometry.computeBoundingBox()
-    const distanceX = Math.abs(e.geometry.boundingBox.max.x - e.geometry.boundingBox.min.x)
-    const distanceY = Math.abs(e.geometry.boundingBox.max.y - e.geometry.boundingBox.min.y)
-    const distanceZ = Math.abs(e.geometry.boundingBox.max.z - e.geometry.boundingBox.min.z)
-    const max = Math.max(distanceX, distanceY, distanceZ)
 
-    let direction = 'x'
-    if (max === distanceX) direction = 'x'
-    else if (max === distanceY) direction = 'y'
-    else if (max === distanceZ) direction = 'z'
-    e.userData.direction = direction
+    // if(index === 0) {
+      const material = e.initShaderMaterial()
+      e.material = material
 
-    const material = e.initShaderMaterial()
-    e.material = material
-    e.material.uniforms.long.value = max
-
-
-
-
-    if (e.name.includes('164')) {
-      const geometry = e.geometry;
-      console.log('e: ', e);
-      // 获取管状模型的顶点数据
-      const count = geometry.attributes.position.count
-      // 计算两侧封顶的中心点
-      const centerPoint1 = new Bol3D.Vector3();
-      const centerPoint2 = new Bol3D.Vector3();
-      let centerBasePoint1 = null
-      let centerPoint1Count = 0
-      let centerPoint2Count = 0
-      let temp = {}
-
-      for (let i = 0; i < count; i++) {
-        const worldPosition = new Bol3D.Vector3()
-        worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(e.matrixWorld)
-
-        if (temp[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z]) {
-          continue
-
-        } else {
-          temp[worldPosition.x + ',' + worldPosition.y + ',' + worldPosition.z] = 1
-          const a = new Bol3D.Vector3(worldPosition.x, worldPosition.y, worldPosition.z)
-          if (!centerBasePoint1) {
-            centerPoint1.x += worldPosition.x;
-            centerPoint1.y += worldPosition.y;
-            centerPoint1.z += worldPosition.z;
-            centerPoint1Count++
-            centerBasePoint1 = a.clone()
-
-          } else {
-            const dis = a.distanceTo(centerBasePoint1)
-
-            if (dis > 10) {
-              centerPoint2.x += worldPosition.x;
-              centerPoint2.y += worldPosition.y;
-              centerPoint2.z += worldPosition.z;
-              centerPoint2Count++
-
-            } else {
-              centerPoint1.x += worldPosition.x;
-              centerPoint1.y += worldPosition.y;
-              centerPoint1.z += worldPosition.z;
-              centerPoint1Count++
-            }
-          }
-        }
-      }
-
-      centerPoint1.divideScalar(centerPoint1Count);
-      centerPoint2.divideScalar(centerPoint2Count);
-      // 计算管状模型的朝向向量
-      const directionVector = new Bol3D.Vector3();
-      directionVector.subVectors(centerPoint2, centerPoint1).normalize()
-      e.userData.directionVector = directionVector
-      console.log('directionVector: ', directionVector);
-      console.log('temp: ', temp);
-
-
-      const array = geometry.attributes.position.array
-      for (let i = 0; i < count; i++) {
-        const worldPosition = new Bol3D.Vector3()
-        worldPosition.fromBufferAttribute(geometry.attributes.position, i).applyMatrix4(e.matrixWorld)
-        // 在direction上的投影
-        const projectVector = worldPosition.clone().projectOnVector(directionVector);
-        if (i === 0) {
-          console.log('worldPosition: ', worldPosition);
-          console.log('projectVector: ', projectVector);
-          const g2 = new Bol3D.BoxGeometry(10, 10, 500);
-          const m2 = new Bol3D.MeshBasicMaterial({ color: 0x00ff00 });
-          const cylinderMesh = new Bol3D.Mesh(g2, m2);
-          cylinderMesh.lookAt(directionVector);
-          cylinderMesh.position.set(worldPosition.x, worldPosition.y, worldPosition.z);
-          // cylinderMesh.position.set(projectVector.x, projectVector.y, projectVector.z);
-          container.scene.add(cylinderMesh);
-          console.log('cylinderMesh: ', cylinderMesh);
-          UTIL.setModelPosition(cylinderMesh)
-        }
-        // const distance = new Bol3D.Vector3().subVectors(projectVector, worldPosition)
-
-        // distance.multiplyScalar(5)
-
-        // 将修改后的坐标重新写回顶点数组
-        //   array[i / 3] = distance.x;
-        //   array[i / 3 + 1] = distance.y;
-        //   array[i / 3 + 2] = distance.z;
-        // }
-
-        geometry.attributes.position.needsUpdate = true;
-      }
-    }
+    // }
+    // e.material.uniforms.long.value = max
   })
 
   // control回调
   CACHE.container.orbitControls.addEventListener('end', () => {
-    // const p = CACHE.container.orbitCamera.position.clone()
-    // const t = CACHE.container.orbitControls.target.clone()
-    // const distance = p.distanceTo(t)
-    // STATE.pipelineList.forEach(e => {
-    //   const directionVector = e.userData.directionVector
-    //   e.scale.set( 1 / directionVector.x * distance / 500 + 1,  1 / directionVector.y * distance / 500 + 1,  1 / directionVector.z * distance / 500 + 1)
-    //   // if (e.userData.direction === 'x') e.scale.set(1, distance / 100, distance / 100)
-    //   // else if (e.userData.direction === 'y') e.scale.set(distance / 100, 1, distance / 100)
-    //   // else if (e.userData.direction === 'z') e.scale.set(distance / 100, distance / 100, 1)
-    // })
+    const p = CACHE.container.orbitCamera.position.clone()
+    const t = CACHE.container.orbitControls.target.clone()
+    const distance = p.distanceTo(t)
+
+    // 管道近小远大
+    STATE.pipelineList.forEach(e => {
+      e.radius = distance / 200
+    })
   })
 }
 
@@ -302,11 +341,13 @@ function render() {
   requestAnimationFrame(render)
 
   const time = STATE.clock.getElapsedTime()
-  // if (STATE.pipelineList.length) {
-  //   STATE.pipelineList.forEach(e => {
-  //     e.material.uniforms.time.value = time
-  //   })
-  // }
+  if (STATE.pipelineList.length) {
+    STATE.pipelineList.forEach(e => {
+      if (e?.material?.uniforms?.time) {
+        e.material.uniforms.time.value = time
+      }
+    })
+  }
 
   TWEEN.update()
 }
