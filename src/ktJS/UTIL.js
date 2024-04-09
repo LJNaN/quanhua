@@ -329,27 +329,27 @@ function getWorldPosition(object) {
   }
 }
 
+// BFS寻路算法
+function findPath(start, end) {
+  const pathGraph = DATA.pipelineMap.zhonghua.pathGraph
+  const queue = [[start]]
+  const visited = new Set()
 
-// DFS寻路算法
-function findPath(start, end, visited = []) {
-  
-  const pathGraph = DATA.pathGraph
-  if (start === end) {
-    return [end]
-  }
-  visited.push(start)
+  while (queue.length > 0) {
+    const path = queue.shift()
+    const node = path[path.length - 1]
 
-  if (!pathGraph[start]) {
-    console.error(start + ' 在图中无映射')
-    return []
-  }
+    if (node === end) {
+      return path
+    }
 
-  for (const neighbor of pathGraph[start]) {
-    if (!visited.includes(neighbor)) {
-      const path = findPath(neighbor, end, visited.slice())
-      if (path.length > 0) {
-        path.unshift(start)
-        return path
+    if (!visited.has(node)) {
+      visited.add(node)
+
+      if (pathGraph[node]) {
+        for (const neighbor of pathGraph[node]) {
+          queue.push([...path, neighbor])
+        }
       }
     }
   }

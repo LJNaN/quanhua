@@ -1,4 +1,12 @@
-const pathGraph = {
+// 以下存储图结构数据和对应的管道数据
+const pipelineMap = {
+  zhonghua: null,
+  gangfeng: null
+}
+
+// ***** start *****
+// 模型名为 ZhongHua 的
+const pathGraph1 = {
   "90": [91, 94],
   "91": [90, 92],
   "92": [91, 96],
@@ -89,6 +97,7 @@ const pathGraph = {
   "2002": [168],
   "2003": [166],
   "2004": [169],
+  "2005": [156],
   "2006": [109],
   "2007": [107],
   "2008": [103],
@@ -124,17 +133,35 @@ const pathGraph = {
   "2038": [],
   "2039": [],
   "2040": [134],
+  "2041": [118],
   "2042": [155],
   "2043": [104],
   "2044": [2045],
   "2045": [150, 2016],
   "2046": [132, 140],
-  "2047": [94]
+  "2047": [97]
 }
+const originOil1 = [2038, 2034] // 原油 [入口管, 出口管]
+const finishedOil1 = [2039, 2041] // 成品油 [入口管, 出口管]
+const boatPort1 = [125, 121, 116, 93] // 船舶码头的第一根油管
+
+
+// 模型名为 GangFeng 的
+// todo
+
+
+// 整合数据
+pipelineMap.zhonghua = {
+  pathGraph: pathGraph1,
+  originOil: originOil1,
+  finishedOil: finishedOil1,
+  boatPort: boatPort1
+}
+// ***** end *****
 
 
 export const DATA = {
-  pathGraph
+  pipelineMap
 }
 
 window.DATA = DATA

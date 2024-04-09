@@ -9,10 +9,20 @@ import { UTIL } from '@/ktJS/UTIL.js'
 function handleBtn(id) {
   API.pipeLineReset()
   if (id === 1) {
-    const a = UTIL.findPath(125, 2038)
-    const b = UTIL.findPath(2034, 2024)
-    const filterArr = STATE.pipelineList.filter(e => a.includes(Number(e.name.replace('GuanDao_', ''))) || b.includes(Number(e.name.replace('GuanDao_', ''))))
-    console.log(filterArr)
+    const data = DATA.pipelineMap.zhonghua
+    const randomBoatPort = data.boatPort[Math.floor(Math.random() * data.boatPort.length)]
+    const randomTransferStation = Math.random() > 0.5 ? data.originOil : data.finishedOil
+    const toCanPipelineArr = STATE.pipelineList.filter(e => Number(e.name.replace('GuanDao_', '') >= 2000))
+    const randomToCanPipeline = toCanPipelineArr[Math.floor(Math.random() * toCanPipelineArr.length)]
+    
+    console.log('randomBoatPort: ', randomBoatPort);
+    console.log('randomTransferStation: ', randomTransferStation);
+    console.log('randomToCanPipeline: ', Number(randomToCanPipeline.name.replace('GuanDao_', '')));
+    const toTransferStation = UTIL.findPath(randomBoatPort, randomTransferStation[0])
+    const toCan = UTIL.findPath(randomTransferStation[1], Number(randomToCanPipeline.name.replace('GuanDao_', '')))
+    console.log('toTransferStation: ', toTransferStation);
+    console.log('toCan: ', toCan);
+    const filterArr = STATE.pipelineList.filter(e => toTransferStation.includes(Number(e.name.replace('GuanDao_', ''))) || toCan.includes(Number(e.name.replace('GuanDao_', ''))))
     filterArr.forEach(e => {
       e.materialType = 'flow'
     })

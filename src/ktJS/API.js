@@ -293,8 +293,8 @@ function afterOnload() {
     e.initRadiusData()
     e.initShaderMaterial()
     e.userData.defaultMaterial = defaultMaterial
-    // e.materialType = 'default'
-    e.materialType = 'flow'
+    e.materialType = 'default'
+    // e.materialType = 'flow'
 
     // e.materialType = 'default'
     // e.material = STATE.pipelineMaterial.default.clone()
