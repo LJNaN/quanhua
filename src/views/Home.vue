@@ -4,29 +4,24 @@ import * as echarts from "echarts";
 import { STATE } from '@/ktJS/STATE.js'
 import { DATA } from '@/ktJS/DATA.js'
 import { API } from '@/ktJS/API.js'
+import { UTIL } from '@/ktJS/UTIL.js'
 
 function handleBtn(id) {
   API.pipeLineReset()
   if (id === 1) {
-    const pipelineMap = DATA.pipelineMap.find(e => e.name === 'part1ToCrudeOilStation')
-    const filterArr = STATE.pipelineList.filter(e => pipelineMap.path.includes(Number(e.name.split('_')[1])))
+    const a = UTIL.findPath(125, 2038)
+    const b = UTIL.findPath(2034, 2024)
+    const filterArr = STATE.pipelineList.filter(e => a.includes(Number(e.name.replace('GuanDao_', ''))) || b.includes(Number(e.name.replace('GuanDao_', ''))))
+    console.log(filterArr)
     filterArr.forEach(e => {
-      e.materialType = 'blue'
+      e.materialType = 'flow'
     })
 
   } else if (id === 2) {
-    const pipelineMap = DATA.pipelineMap.find(e => e.name === 'crudeOilStationToStorage1')
-    const filterArr = STATE.pipelineList.filter(e => pipelineMap.path.includes(Number(e.name.split('_')[1])))
-    filterArr.forEach(e => {
-      e.materialType = 'blue'
-    })
+
 
   } else if (id === 3) {
-    const pipelineMap = DATA.pipelineMap.find(e => e.name === 'crudeOilStationToStorage2')
-    const filterArr = STATE.pipelineList.filter(e => pipelineMap.path.includes(Number(e.name.split('_')[1])))
-    filterArr.forEach(e => {
-      e.materialType = 'blue'
-    })
+
   }
 }
 

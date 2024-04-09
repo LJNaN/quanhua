@@ -27,19 +27,17 @@ class Pipeline extends Bol3D.Mesh {
 
   set materialType(val) {
     this._materialType = val
-    if (val === 'default') this.material = STATE.pipelineMaterial.default.clone()
-    else if (val === 'red') this.material = STATE.pipelineMaterial.red.clone()
-    else if (val === 'blue') this.material = STATE.pipelineMaterial.blue.clone()
-    else if (val === 'both') this.material = STATE.pipelineMaterial.both.clone()
-
-    if (DATA.mapReversePipelineList.includes(Number(this.name.split('GuanDao_')[1]))) {
-      if (this.material.map) {
-        const map = this.material.map.clone()
-        this.material.map = map.clone()
-        this.material.map.needsUpdate = true
-        this.material.map.repeat.set(-1, -1)
-      }
-    }
+    if (val === 'default') this.material = this.userData.defaultMaterial
+    else if (val === 'flow') this.material = this.userData.shaderMaterial
+   
+    // if (DATA.mapReversePipelineList.includes(Number(this.name.split('GuanDao_')[1]))) {
+    //   if (this.material.map) {
+    //     const map = this.material.map.clone()
+    //     this.material.map = map.clone()
+    //     this.material.map.needsUpdate = true
+    //     this.material.map.repeat.set(-1, -1)
+    //   }
+    // }
   }
 
   initShaderMaterial() {
@@ -72,7 +70,8 @@ class Pipeline extends Bol3D.Mesh {
       varying vec2 vPosition;
 
       void main() {
-        vec4 color = vec4(0.0,0.7,0.7,1.);
+        vec4 color1 = vec4(0.0,1.,1.,0.7);
+        vec4 color2 = vec4(1.,0.0,0.0,0.7);
 
         float threshold = 5.; // 控制留白的间距
         float blockWidth = 1.; // 控制留白的宽度
@@ -81,6 +80,12 @@ class Pipeline extends Bol3D.Mesh {
         flowOffset = mod(flowOffset, threshold); // 将偏移量限制在阈值范围内
         float blockMask = 1.0 - step(flowOffset, blockWidth );
 
+        vec4 color = vec4(0.,1.,1.,1.);
+        // if(vUv.y > 0.75 || vUv.y < 0.25) {
+        //   color = color2;
+        // } else {
+        //   color = color1;
+        // }
         color.a = blockMask;
         
 
@@ -91,7 +96,7 @@ class Pipeline extends Bol3D.Mesh {
 
     // 创建 ShaderMaterial，并传入纹理
     const pipelineLength = this.computeBoundingLen()
-    
+
     const material = new Bol3D.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
@@ -102,7 +107,7 @@ class Pipeline extends Bol3D.Mesh {
       transparent: true
     })
     material.needsUpdate = true
-    return material
+    this.userData.shaderMaterial = material
   }
 
   computeBoundingLen() {
@@ -110,7 +115,7 @@ class Pipeline extends Bol3D.Mesh {
     geometry.computeBoundingBox()
     const worldBox = new Bol3D.Box3().copy(geometry.boundingBox).applyMatrix4(this.matrixWorld)
     const length = worldBox.getSize(new Bol3D.Vector3()).length()
-    
+
     this.userData.long = length
     return length
   }
@@ -273,32 +278,27 @@ function afterOnload() {
   STATE.sceneList.mainFactoryPark = mainFactoryPark
   STATE.sceneList.qinglanFactory = qinglanFactory
 
-  // 删除面很多的栏杆
+  // 生成管道数组
   qinglanFactory.traverse(e => {
-    if (e.isMesh) {
-      if ((e.name.includes('G_T_') && e.name.includes('_2')) || e.name.includes('_01_3') || e.name.includes('_T_01_2')) {
-        e.visible = false
-
-      } else if (e.name.includes('GuanDao_')) {
-        STATE.pipelineList.push(e)
-      }
+    if (e.isMesh && e.name.includes('GuanDao_')) {
+      STATE.pipelineList.push(e)
     }
   })
 
 
   // 开始施法  计算每个管子的方向是 x, y 还是 z
+  const defaultMaterial = new Bol3D.MeshLambertMaterial({ color: 0xFFFFFF })
   STATE.pipelineList.forEach((e, index) => {
     Object.setPrototypeOf(e, Pipeline.prototype)
     e.initRadiusData()
+    e.initShaderMaterial()
+    e.userData.defaultMaterial = defaultMaterial
+    // e.materialType = 'default'
+    e.materialType = 'flow'
+
     // e.materialType = 'default'
     // e.material = STATE.pipelineMaterial.default.clone()
-
-    // if(index === 0) {
-      const material = e.initShaderMaterial()
-      e.material = material
-
-    // }
-    // e.material.uniforms.long.value = max
+    // e.material = material
   })
 
   // control回调

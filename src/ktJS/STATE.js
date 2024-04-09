@@ -20,6 +20,11 @@ const pipelineMaterial = {
 
 const pipelineList = []
 
+// 任务队列
+const taskQueue = []
+
+
+
 export const STATE = {
   PUBLIC_PATH,
   sceneList,
