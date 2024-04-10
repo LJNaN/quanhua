@@ -346,21 +346,28 @@ function afterOnload() {
 
   setCanNumber()
 
-  // control回调
-  CACHE.container.orbitControls.addEventListener('end', () => {
+
+
+  // 管道近小远大
+  setPipelineScaleByZoom()
+  function setPipelineScaleByZoom() {
     const p = CACHE.container.orbitCamera.position.clone()
     const t = CACHE.container.orbitControls.target.clone()
     const distance = p.distanceTo(t)
 
-    // 管道近小远大
     STATE.pipelineList.forEach(e => {
       e.radius = distance / 200
     })
+  }
+  
+  // control回调
+  CACHE.container.orbitControls.addEventListener('end', () => {
+    setPipelineScaleByZoom()
   })
 }
 
 
-// 往管子上设置编号、贴图
+// 往罐子上设置编号、贴图
 function setCanNumber() {
   const zhonghua = STATE.sceneList.qinglanFactory.children.find(e => e.name === 'QLS').children.find(e => e.name === 'ZhongHua1').children.find(e => e.name === 'ZhongHua1_Guan')
 
@@ -455,6 +462,7 @@ function setTask(options) {
   STATE.taskQueue.value.push({ boat, port, station, path1, path2, type, color })
 }
 
+
 // 移除任务，传任务对象
 function removeTask(task) {
   const target = STATE.taskQueue.value.findIndex(e => e === task)
@@ -462,6 +470,7 @@ function removeTask(task) {
     STATE.taskQueue.value.splice(target, 1)
   }
 }
+
 
 // 监听队列任务
 watch(STATE.taskQueue.value,
