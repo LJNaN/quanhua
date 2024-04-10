@@ -77,35 +77,43 @@ class Pipeline extends Bol3D.Mesh {
       uniform float time;
       uniform float pipelineLong;
       uniform int reverse; // 流动方向反转
+      uniform vec3 colors[5]; // 接收颜色
       varying vec2 vUv; // 接收从顶点着色器传递过来的纹理坐标
       varying vec2 vPosition;
 
       void main() {
-        vec4 color1 = vec4(0.0,1.,1.,0.7);
-        vec4 color2 = vec4(1.,0.0,0.0,0.7);
-
-        float threshold = 5.; // 控制留白的间距
-        float blockWidth = 1.; // 控制留白的宽度
+        float threshold = 14.; // 控制留白的间距
+        float blockWidth = 7.; // 控制留白的宽度
         float flowSpeed = 10.0; // 控制流动速度
         flowSpeed = reverse == 0 ? flowSpeed : -flowSpeed;
         float flowOffset = vUv.x - time * flowSpeed; // 控制流动效果
         flowOffset = mod(flowOffset, threshold); // 将偏移量限制在阈值范围内
         float blockMask = 1.0 - step(flowOffset, blockWidth);
 
-        vec4 color = vec4(0.,1.,1.,1.);
-        // if(vUv.y > 0.75 || vUv.y < 0.25) {
-        //   color = color2;
-        // } else {
-        //   color = color1;
-        // }
+        vec4 color = vec4(1.,1.,1.,1.);
 
-        if(blockMask < 0.9) {
-          color.a = blockMask + 0.1;
-        } else {
-          color.a = blockMask;
+        // 检查有多少个有效颜色(也就是路线重复的)
+        int effectiveColorNum = 0;
+        for(int i = 0; i < 5; i++) {
+          if(colors[i].r != 0. || colors[i].g != 0. || colors[i].b != 0.) {
+            effectiveColorNum++;
+          }
         }
-        
 
+        // 根据effectiveColorNum 计算 vUv.y
+        // 已使用的颜色数量
+        int usedColorNum = 0;
+        for(int i = 0; i < 5; i++) {
+          if(colors[i].r != 0. || colors[i].g != 0. || colors[i].b != 0.) {
+            if(vUv.y > (float(usedColorNum) / float(effectiveColorNum))) {
+              color = vec4(colors[i], 1.0);
+            }
+            usedColorNum++;
+          }
+        }
+
+        color.a = blockMask < 0.7 ? blockMask + 0.3 : blockMask;
+      
         gl_FragColor = color; // 应用纹理颜色到片元
         #include <logdepthbuf_fragment>
       }
@@ -114,11 +122,13 @@ class Pipeline extends Bol3D.Mesh {
     // 创建 ShaderMaterial，并传入纹理
     const pipelineLength = this.computeBoundingLen()
 
+    const noneColor = new Bol3D.Color(0x000000)
     const material = new Bol3D.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
         pipelineLong: { value: pipelineLength },
-        reverse: { value: 0 }
+        reverse: { value: 0 },
+        colors: { value: [noneColor, noneColor, noneColor, noneColor, noneColor] }
       },
       vertexShader: vertexShader,
       fragmentShader: fragmentShader,
@@ -387,10 +397,13 @@ function setCanNumber() {
 }
 
 
-// 管道贴图重置
+// 管道状态重置
 function pipeLineReset() {
   STATE.pipelineList.forEach(e => {
     e.materialType = 'default'
+    e.flowReverse = false
+    const noneColor = new Bol3D.Color(0x000000)
+    e.userData.shaderMaterial.uniforms.colors.value = [noneColor, noneColor, noneColor, noneColor, noneColor]
   })
 }
 
@@ -431,6 +444,7 @@ function randomTask() {
   })
 }
 
+
 // 设置队列任务
 function setTask(options) {
   const { boat, port, station, start1, end1, start2, end2, type } = options
@@ -438,30 +452,43 @@ function setTask(options) {
   const path1 = type === 'in' ? UTIL.findPath(start1, end1) : UTIL.findPath(end2, end1)
   const path2 = type === 'in' ? UTIL.findPath(start2, end2) : UTIL.findPath(start2, start1)
 
-  // STATE.taskQueue.value.push({ boat, port, station, path1, path2, type, color })
-  STATE.pipelineList.forEach(e => {
-    if (e.userData.belong === 'QLS_ZhongHua' && (path1.includes(e.userData.number) || path2.includes(e.userData.number))) {
-      if(e.userData.isShuangXiang) {
-        e.flowReverse = type === 'in'
-      }
-      e.materialType = 'flow'
-    }
-  })
-  // STATE.taskQueue.push(options)
+  STATE.taskQueue.value.push({ boat, port, station, path1, path2, type, color })
 }
 
 // 移除任务，传任务对象
 function removeTask(task) {
-
+  const target = STATE.taskQueue.value.findIndex(e => e === task)
+  if (target >= 0) {
+    STATE.taskQueue.value.splice(target, 1)
+  }
 }
 
 // 监听队列任务
-// watch(STATE.taskQueue.value,
-//   (taskQueue) => {
-//     console.log('taskQueue: ', taskQueue);
-//     taskQueue.
-//   }
-// )
+watch(STATE.taskQueue.value,
+  (taskQueue) => {
+    API.pipeLineReset()
+    taskQueue.forEach(task => {
+      STATE.pipelineList.forEach(pipeline => {
+        if (task.path1.includes(pipeline.userData.number) || task.path2.includes(pipeline.userData.number)) {
+          if (pipeline.userData.isShuangXiang) {
+            pipeline.flowReverse = task.type === 'in'
+          }
+
+          const shaderColors = pipeline.userData.shaderMaterial.uniforms.colors.value
+          for (let i = 0; i < shaderColors.length; i++) {
+            if (shaderColors[i].getHexString() === '000000') {
+              shaderColors[i] = new Bol3D.Color(task.color)
+              break
+            }
+          }
+
+          pipeline.materialType = 'flow'
+          pipeline.flowReverse = pipeline.userData.isShuangXiang
+        }
+      })
+    })
+  }
+)
 
 
 

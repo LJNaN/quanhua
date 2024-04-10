@@ -12,10 +12,9 @@ function handleBtn(id) {
     API.randomTask()
 
   } else if (id === 2) {
-
-
-  } else if (id === 3) {
-
+    if(STATE.taskQueue.value.length) {
+      API.removeTask(STATE.taskQueue.value[Math.floor(Math.random() * STATE.taskQueue.value.length)])
+    }
   }
 }
 
@@ -23,9 +22,8 @@ function handleBtn(id) {
 
 <template>
   <div class="home">
-    <el-button class="btn" @click="handleBtn(1)">青兰山_中化 随机</el-button>
-    <!-- <el-button class="btn" @click="handleBtn(2)"></el-button>
-    <el-button class="btn" @click="handleBtn(3)"></el-button> -->
+    <el-button class="btn" @click="handleBtn(1)">青兰山_中化 随机增加任务</el-button>
+    <el-button class="btn" @click="handleBtn(2)">青兰山_中化 随机删除任务</el-button>
   </div>
 </template>
 

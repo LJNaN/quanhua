@@ -212,7 +212,7 @@ pipelineMap.qinglanshan.zhonghua = {
 
 
 // 设置几个好看的管道流动颜色
-const flowColorMap = ['#f76262', '#c70039', '#b5ff7d', '#cffdf8', '#f2910a', '#22b2da', '#216583', '#f0d43a', '#65c0ba', '#eda1c1', '#83b271']
+const flowColorMap = ['#f76262', '#00ff00', '#00ffff', '#cffdf8', '#f2910a']
 
 export const DATA = {
   pipelineMap,
