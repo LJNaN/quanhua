@@ -1,11 +1,20 @@
 // 以下存储图结构数据和对应的管道数据
 const pipelineMap = {
-  zhonghua: null,
-  gangfeng: null
+  zhonghua: null, // 大中化厂区,
+  qinglanshan: { // 青兰山厂区
+    zhonghua: null, // 中化
+    gangfeng: null, // 港丰
+  }
 }
 
 // ***** start *****
-// 模型名为 ZhongHua 的
+
+// 大中化的厂区
+// todo
+
+
+// 青兰山的两个区
+// 模型名为 ZhongHua 的 (中化)
 const pathGraph1 = {
   "90": [91, 94],
   "91": [90, 92],
@@ -144,24 +153,70 @@ const pathGraph1 = {
 const originOil1 = [2038, 2034] // 原油 [入口管, 出口管]
 const finishedOil1 = [2039, 2041] // 成品油 [入口管, 出口管]
 const boatPort1 = [125, 121, 116, 93] // 船舶码头的第一根油管
+const canToPipelineMap1 = [
+  { can: 'WuBianHao_005', pipeline: 2006 },
+  { can: 'WuBianHao_004', pipeline: 2007 },
+  { can: 'WuBianHao_003', pipeline: 2033 },
+  { can: 'WuBianHao_002', pipeline: 2043 },
+  { can: '1330_T_12', pipeline: 2031 },
+  { can: '1330_T_11', pipeline: 2036 },
+  { can: '1330_T_10', pipeline: 2037 },
+  { can: '1330_T_09', pipeline: 2035 },
+  { can: '1330_T_06', pipeline: 2028 },
+  { can: '1330_T_05', pipeline: 2027 },
+  { can: '1330_T_04', pipeline: 2032 },
+  { can: '1330_T_04', pipeline: 2032 },
+  { can: '1330_T_08', pipeline: 2040 },
+  { can: '1330_T_07', pipeline: 2025 },
+  { can: '1330_T_03', pipeline: 2030 },
+  { can: '1330_T_02', pipeline: 2029 },
+  { can: '1330_T_01', pipeline: 2026 },
+  { can: '1302_T_07', pipeline: 2023 },
+  { can: '1302_T_05', pipeline: 2022 },
+  { can: '1302_T_03', pipeline: 2024 },
+  { can: '1304_T_05', pipeline: 2016 },
+  { can: '1304_T_03', pipeline: 2019 },
+  { can: '1304_T_01', pipeline: 2021 },
+  { can: '1302_T_06', pipeline: 2013 },
+  { can: '1302_T_04', pipeline: 2011 },
+  { can: '1302_T_02', pipeline: 2014 },
+  { can: '1304_T_06', pipeline: 2042 },
+  { can: '1304_T_04', pipeline: 2015 },
+  { can: '1304_T_02', pipeline: 2012 },
+  { can: '1305_T_09', pipeline: 2009 },
+  { can: '1305_T_04', pipeline: 2010 },
+  { can: '1305_T_03', pipeline: 2001 },
+  { can: '1305_T_02', pipeline: 2005 },
+  { can: '1305_T_01', pipeline: 2017 },
+  { can: '1305_T_10', pipeline: 2004 },
+  { can: '1305_T_08', pipeline: 2002 },
+  { can: '1305_T_07', pipeline: 2018 },
+  { can: '1305_T_06', pipeline: 2003 },
+  { can: '1305_T_05', pipeline: 2000 },
+]
 
 
-// 模型名为 GangFeng 的
+// 模型名为 GangFeng 的 (港丰)
 // todo
 
 
 // 整合数据
-pipelineMap.zhonghua = {
+pipelineMap.qinglanshan.zhonghua = {
   pathGraph: pathGraph1,
   originOil: originOil1,
   finishedOil: finishedOil1,
-  boatPort: boatPort1
+  boatPort: boatPort1,
+  canToPipelineMap: canToPipelineMap1
 }
 // ***** end *****
 
 
+// 设置几个好看的管道流动颜色
+const flowColorMap = ['#f76262', '#c70039', '#b5ff7d', '#cffdf8', '#f2910a', '#22b2da', '#216583', '#f0d43a', '#65c0ba', '#eda1c1', '#83b271']
+
 export const DATA = {
-  pipelineMap
+  pipelineMap,
+  flowColorMap
 }
 
 window.DATA = DATA

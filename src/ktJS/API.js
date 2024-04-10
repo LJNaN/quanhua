@@ -4,6 +4,7 @@ import { DATA } from './DATA.js'
 import { UTIL } from './UTIL.js'
 import { SimplifyModifier } from '@/assets/js/SimplifyModifier.js';
 import * as TWEEN from '@tweenjs/tween.js'
+import { watch } from 'vue'
 
 
 
@@ -21,6 +22,15 @@ function doubleClickFunc(firstObj) {
 
 // 继承一下PipeLine
 class Pipeline extends Bol3D.Mesh {
+  get flowReverse() {
+    return this._flowReverse
+  }
+
+  set flowReverse(val) {
+    this._flowReverse = val
+    this.userData.shaderMaterial.uniforms.reverse.value = val ? 1 : 0
+  }
+
   get materialType() {
     return this._materialType
   }
@@ -29,7 +39,7 @@ class Pipeline extends Bol3D.Mesh {
     this._materialType = val
     if (val === 'default') this.material = this.userData.defaultMaterial
     else if (val === 'flow') this.material = this.userData.shaderMaterial
-   
+
     // if (DATA.mapReversePipelineList.includes(Number(this.name.split('GuanDao_')[1]))) {
     //   if (this.material.map) {
     //     const map = this.material.map.clone()
@@ -66,6 +76,7 @@ class Pipeline extends Bol3D.Mesh {
       
       uniform float time;
       uniform float pipelineLong;
+      uniform int reverse; // 流动方向反转
       varying vec2 vUv; // 接收从顶点着色器传递过来的纹理坐标
       varying vec2 vPosition;
 
@@ -76,9 +87,10 @@ class Pipeline extends Bol3D.Mesh {
         float threshold = 5.; // 控制留白的间距
         float blockWidth = 1.; // 控制留白的宽度
         float flowSpeed = 10.0; // 控制流动速度
+        flowSpeed = reverse == 0 ? flowSpeed : -flowSpeed;
         float flowOffset = vUv.x - time * flowSpeed; // 控制流动效果
         flowOffset = mod(flowOffset, threshold); // 将偏移量限制在阈值范围内
-        float blockMask = 1.0 - step(flowOffset, blockWidth );
+        float blockMask = 1.0 - step(flowOffset, blockWidth);
 
         vec4 color = vec4(0.,1.,1.,1.);
         // if(vUv.y > 0.75 || vUv.y < 0.25) {
@@ -86,7 +98,12 @@ class Pipeline extends Bol3D.Mesh {
         // } else {
         //   color = color1;
         // }
-        color.a = blockMask;
+
+        if(blockMask < 0.9) {
+          color.a = blockMask + 0.1;
+        } else {
+          color.a = blockMask;
+        }
         
 
         gl_FragColor = color; // 应用纹理颜色到片元
@@ -100,7 +117,8 @@ class Pipeline extends Bol3D.Mesh {
     const material = new Bol3D.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
-        pipelineLong: { value: pipelineLength }
+        pipelineLong: { value: pipelineLength },
+        reverse: { value: 0 }
       },
       vertexShader: vertexShader,
       fragmentShader: fragmentShader,
@@ -253,10 +271,11 @@ class Pipeline extends Bol3D.Mesh {
     this.userData.originDistanceList = originDistanceList
     this.userData.worldPositionList = worldPositionList
   }
+
 }
 
 
-
+// 场景加载后的操作
 function afterOnload() {
   // 地面
   const dimian = STATE.sceneList['1'].children.find(e => e.name === 'DiMian')
@@ -279,27 +298,43 @@ function afterOnload() {
   STATE.sceneList.qinglanFactory = qinglanFactory
 
   // 生成管道数组
-  qinglanFactory.traverse(e => {
-    if (e.isMesh && e.name.includes('GuanDao_')) {
-      STATE.pipelineList.push(e)
+  qinglanFactory.children[0].children.forEach(e => {
+    if (e.name === 'GangFeng') {
+      e.traverse(e2 => {
+        if (e2.isMesh && e2.name.includes('GuanDao_')) {
+          e2.userData.belong = 'QLS_GangFeng'
+          e2.userData.number = Number(e2.name.replace('GuanDao_', ''))
+          STATE.pipelineList.push(e2)
+        }
+      })
+
+    } else if (e.name === 'ZhongHua1') {
+      e.traverse(e2 => {
+        if (e2.isMesh && e2.name.includes('GuanDao_')) {
+          e2.userData.belong = 'QLS_ZhongHua'
+          e2.userData.number = Number(e2.name.replace('GuanDao_', ''))
+          STATE.pipelineList.push(e2)
+        }
+      })
     }
   })
 
 
+
   // 开始施法  计算每个管子的方向是 x, y 还是 z
   const defaultMaterial = new Bol3D.MeshLambertMaterial({ color: 0xFFFFFF })
-  STATE.pipelineList.forEach((e, index) => {
+  STATE.pipelineList.forEach(e => {
     Object.setPrototypeOf(e, Pipeline.prototype)
     e.initRadiusData()
     e.initShaderMaterial()
     e.userData.defaultMaterial = defaultMaterial
+    e.userData.isShuangXiang = e.parent.name.includes('ShuangXiang_')
     e.materialType = 'default'
+    e.flowReverse = e.userData.isShuangXiang
     // e.materialType = 'flow'
-
-    // e.materialType = 'default'
-    // e.material = STATE.pipelineMaterial.default.clone()
-    // e.material = material
   })
+
+  setCanNumber()
 
   // control回调
   CACHE.container.orbitControls.addEventListener('end', () => {
@@ -315,7 +350,44 @@ function afterOnload() {
 }
 
 
-// 重置
+// 往管子上设置编号、贴图
+function setCanNumber() {
+  const zhonghua = STATE.sceneList.qinglanFactory.children.find(e => e.name === 'QLS').children.find(e => e.name === 'ZhongHua1').children.find(e => e.name === 'ZhongHua1_Guan')
+
+  DATA.pipelineMap.qinglanshan.zhonghua.canToPipelineMap.forEach(e => {
+    const textureModel = zhonghua.children.find(model => model.name === e.can)
+    if (!textureModel || textureModel.isGroup) return
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 1000
+    canvas.height = 500
+    const ctx = canvas.getContext('2d')
+    ctx.font = "bold 120px Arial"
+    ctx.fillStyle = "#1e4f91";
+    ctx.textAlign = 'center';
+    ctx.fillText(`${e.can}`, 500, 400)
+
+    const logo = new Image()
+    logo.src = '/assets/img/4.png'
+    logo.onload = () => {
+      ctx.drawImage(logo, 250, 80, 500, 160)
+      const imgUrl = canvas.toDataURL()
+      const finishedImg = new Image()
+      finishedImg.src = imgUrl
+
+      textureModel.material = textureModel.material.clone()
+      textureModel.material.color.set('#ffffff')
+      const textureLoader = new Bol3D.TextureLoader();
+      const texture = textureLoader.load(imgUrl)
+      textureModel.material.transparent = true
+      textureModel.material.opacity = 1
+      textureModel.material.map = texture
+    }
+  })
+}
+
+
+// 管道贴图重置
 function pipeLineReset() {
   STATE.pipelineList.forEach(e => {
     e.materialType = 'default'
@@ -336,6 +408,63 @@ function hoverFunc(hoverEvent) {
 }
 
 
+// 随机设置任务
+function randomTask() {
+  // 青兰山/中化
+  const data = DATA.pipelineMap.qinglanshan.zhonghua
+  const randomBoatPort = data.boatPort[Math.floor(Math.random() * data.boatPort.length)]
+  const randomTransferStation = Math.random() > 0.5 ? 'originOil' : 'finishedOil'
+  const canToPipelineMap = DATA.pipelineMap.qinglanshan.zhonghua.canToPipelineMap
+  const randomToCanPipeline = canToPipelineMap[Math.floor(Math.random() * canToPipelineMap.length)].pipeline
+  const randomType = Math.random() > 0.5 ? 'in' : 'out'
+  const transferStationPipeline = DATA.pipelineMap.qinglanshan.zhonghua[randomTransferStation]
+
+  setTask({
+    boat: '船1',
+    port: '港口1',
+    station: randomTransferStation,
+    start1: randomBoatPort,
+    end1: transferStationPipeline[0],
+    start2: transferStationPipeline[1],
+    end2: randomToCanPipeline,
+    type: randomType
+  })
+}
+
+// 设置队列任务
+function setTask(options) {
+  const { boat, port, station, start1, end1, start2, end2, type } = options
+  const color = DATA.flowColorMap.find(e => !STATE.taskQueue.value.map(e2 => e2.color).includes(e)) || DATA.flowColorMap[Math.floor(Math.random() * DATA.flowColorMap.length)]
+  const path1 = type === 'in' ? UTIL.findPath(start1, end1) : UTIL.findPath(end2, end1)
+  const path2 = type === 'in' ? UTIL.findPath(start2, end2) : UTIL.findPath(start2, start1)
+
+  // STATE.taskQueue.value.push({ boat, port, station, path1, path2, type, color })
+  STATE.pipelineList.forEach(e => {
+    if (e.userData.belong === 'QLS_ZhongHua' && (path1.includes(e.userData.number) || path2.includes(e.userData.number))) {
+      if(e.userData.isShuangXiang) {
+        e.flowReverse = type === 'in'
+      }
+      e.materialType = 'flow'
+    }
+  })
+  // STATE.taskQueue.push(options)
+}
+
+// 移除任务，传任务对象
+function removeTask(task) {
+
+}
+
+// 监听队列任务
+// watch(STATE.taskQueue.value,
+//   (taskQueue) => {
+//     console.log('taskQueue: ', taskQueue);
+//     taskQueue.
+//   }
+// )
+
+
+
 render()
 function render() {
   requestAnimationFrame(render)
@@ -352,11 +481,16 @@ function render() {
   TWEEN.update()
 }
 
+
+
 export const API = {
   handleInitModel,
   doubleClickFunc,
   hoverFunc,
   afterOnload,
   pipeLineReset,
+  setTask,
+  removeTask,
+  randomTask,
   render
 }

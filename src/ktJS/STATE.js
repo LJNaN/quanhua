@@ -11,17 +11,10 @@ const initCameraState = {
 }
 
 const clock = new Bol3D.Clock()
-
-const pipelineMaterial = {
-  blue: null,
-  red: null,
-  both: null
-}
-
 const pipelineList = []
 
-// 任务队列
-const taskQueue = []
+// 任务队列 格式见 README
+const taskQueue = ref([])
 
 
 
@@ -29,8 +22,8 @@ export const STATE = {
   PUBLIC_PATH,
   sceneList,
   initCameraState,
-  pipelineMaterial,
   pipelineList,
+  taskQueue,
   clock
 }
 

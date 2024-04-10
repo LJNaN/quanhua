@@ -331,7 +331,7 @@ function getWorldPosition(object) {
 
 // BFS寻路算法
 function findPath(start, end) {
-  const pathGraph = DATA.pipelineMap.zhonghua.pathGraph
+  const pathGraph = DATA.pipelineMap.qinglanshan.zhonghua.pathGraph
   const queue = [[start]]
   const visited = new Set()
 
