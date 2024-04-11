@@ -5,6 +5,7 @@ import { STATE } from '@/ktJS/STATE.js'
 import { DATA } from '@/ktJS/DATA.js'
 import { API } from '@/ktJS/API.js'
 import { UTIL } from '@/ktJS/UTIL.js'
+import CanLiquidLevel from '@/components/CanLiquidLevel.vue'
 
 function handleBtn(id) {
   API.pipeLineReset()
@@ -15,8 +16,13 @@ function handleBtn(id) {
     if(STATE.taskQueue.value.length) {
       API.removeTask(STATE.taskQueue.value[Math.floor(Math.random() * STATE.taskQueue.value.length)])
     }
+
+  } else if(id === 3) {
+    canLiquidLevelShow.value = !canLiquidLevelShow.value
   }
 }
+
+const canLiquidLevelShow = ref(false)
 
 </script>
 
@@ -24,6 +30,10 @@ function handleBtn(id) {
   <div class="home">
     <el-button class="btn" @click="handleBtn(1)">青兰山_中化 随机增加任务</el-button>
     <el-button class="btn" @click="handleBtn(2)">青兰山_中化 随机删除任务</el-button>
+    <el-button class="btn" @click="handleBtn(3)">油罐液位弹窗</el-button>
+
+
+    <CanLiquidLevel v-if="canLiquidLevelShow"></CanLiquidLevel>
   </div>
 </template>
 

@@ -90,9 +90,11 @@ class Pipeline extends Bol3D.Mesh {
         flowOffset = mod(flowOffset, threshold); // 将偏移量限制在阈值范围内
         float blockMask = 1.0 - step(flowOffset, blockWidth);
 
-        vec4 color = vec4(1.,1.,1.,1.);
+        
 
+        // *********** 效果1 ***********
         // 检查有多少个有效颜色(也就是路线重复的)
+        vec4 color = vec4(1.,1.,1.,1.);
         int effectiveColorNum = 0;
         for(int i = 0; i < 5; i++) {
           if(colors[i].r != 0. || colors[i].g != 0. || colors[i].b != 0.) {
@@ -111,6 +113,30 @@ class Pipeline extends Bol3D.Mesh {
             usedColorNum++;
           }
         }
+
+
+        // *********** 效果2 ***********
+        // vec4 color = vec4(1.,1.,1.,1.);
+        // for(int i = 0; i < 5; i++) {
+        //   if(colors[i].r != 0. || colors[i].g != 0. || colors[i].b != 0.) {
+        //     if(color.rgb == vec3(1.0, 1.0, 1.0)) {
+        //       color.rgb = vec3(colors[i]);
+        //     } else {
+        //       color = vec4(mix(color.rgb, colors[i], 0.5), 1.0);
+        //     }
+        //   }
+        // }
+
+
+
+        // *********** 效果3 ***********
+        // vec4 color = vec4(0.,0.,0.,1.);
+        // for(int i = 0; i < 5; i++) {
+        //   if(colors[i].r != 0. || colors[i].g != 0. || colors[i].b != 0.) {
+        //     color = vec4(color.rgb + colors[i], 1.0);
+        //   }
+        // }
+
 
         color.a = blockMask < 0.7 ? blockMask + 0.3 : blockMask;
       
@@ -385,7 +411,7 @@ function setCanNumber() {
     ctx.fillText(`${e.can}`, 500, 400)
 
     const logo = new Image()
-    logo.src = '/assets/img/4.png'
+    logo.src = '/assets/img/5.png'
     logo.onload = () => {
       ctx.drawImage(logo, 250, 80, 500, 160)
       const imgUrl = canvas.toDataURL()
